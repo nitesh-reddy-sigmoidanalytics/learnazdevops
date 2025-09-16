@@ -109,7 +109,7 @@ stages:
         testResultsFiles: '**/surefire-reports/TEST-*.xml'
         goals: 'package'
 
-    # Step 3: Detect target folder
+    # Step 3: Detect Maven target folder
     - script: |
         TARGET_DIR=$(find $(System.DefaultWorkingDirectory) -type d -name target | head -n 1)
         if [ -z "$TARGET_DIR" ]; then
@@ -128,18 +128,39 @@ stages:
         flattenFolders: true
       displayName: 'Copy WAR to Artifact Staging Directory'
 
-    # Step 5: Rename WAR to ROOT.war (ensures single WAR deployment)
+    # Step 5: Validate WAR structure
     - script: |
         WAR_FILE=$(find "$(Build.ArtifactStagingDirectory)/war" -name "*.war" | head -n 1)
         if [ -z "$WAR_FILE" ]; then
-          echo "ERROR: WAR file not found to rename"
+          echo "ERROR: No WAR file found to validate"
           exit 1
         fi
+
+        # Check for WEB-INF
+        unzip -l "$WAR_FILE" | grep "WEB-INF/" > /dev/null
+        if [ $? -ne 0 ]; then
+          echo "ERROR: WAR does not contain WEB-INF folder"
+          exit 1
+        fi
+
+        # Check for at least one class file
+        unzip -l "$WAR_FILE" | grep ".class" > /dev/null
+        if [ $? -ne 0 ]; then
+          echo "ERROR: WAR does not contain compiled classes"
+          exit 1
+        fi
+
+        echo "WAR validation passed: WEB-INF and classes exist"
+      displayName: "Validate WAR structure"
+
+    # Step 6: Rename WAR to ROOT.war
+    - script: |
+        WAR_FILE=$(find "$(Build.ArtifactStagingDirectory)/war" -name "*.war" | head -n 1)
         mv "$WAR_FILE" "$(Build.ArtifactStagingDirectory)/war/ROOT.war"
         echo "Renamed WAR to ROOT.war"
       displayName: "Rename WAR to ROOT.war"
 
-    # Step 6: Publish WAR artifact
+    # Step 7: Publish WAR artifact
     - task: PublishBuildArtifacts@1
       inputs:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)/war'
@@ -178,6 +199,7 @@ stages:
               package: '$(Pipeline.Workspace)/warfile/ROOT.war'
               runtimeStack: 'TOMCAT|11-java11'
             displayName: "Deploy ROOT.war to Azure Web App"
+
 
 
 
