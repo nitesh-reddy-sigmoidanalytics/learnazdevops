@@ -128,7 +128,7 @@ stages:
         flattenFolders: true
       displayName: 'Copy WAR to Artifact Staging Directory'
 
-    # Step 5: Rename WAR to ROOT.war for root context deployment
+    # Step 5: Rename WAR to ROOT.war (ensures single WAR deployment)
     - script: |
         WAR_FILE=$(find "$(Build.ArtifactStagingDirectory)/war" -name "*.war" | head -n 1)
         if [ -z "$WAR_FILE" ]; then
@@ -169,15 +169,16 @@ stages:
               ls -R $(Pipeline.Workspace)/warfile
             displayName: "Debug artifact contents"
 
-          # Step 3: Deploy WAR to Azure Web App
+          # Step 3: Deploy ROOT.war to Azure Web App
           - task: AzureWebApp@1
             inputs:
               azureSubscription: 'servcon'
               appType: 'webAppLinux'
               appName: 'learnazdevops'
-              package: '$(Pipeline.Workspace)/warfile/**/*.war'
+              package: '$(Pipeline.Workspace)/warfile/ROOT.war'
               runtimeStack: 'TOMCAT|11-java11'
-            displayName: "Deploy WAR to Azure Web App"
+            displayName: "Deploy ROOT.war to Azure Web App"
+
 
 
              
