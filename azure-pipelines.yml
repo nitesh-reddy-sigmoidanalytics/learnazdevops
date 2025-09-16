@@ -150,7 +150,7 @@ stages:
           # Step 3: Deploy WAR to Azure Web App
           - task: AzureWebApp@1
             inputs:
-              azureSubscription: 'Azure subscription 1'
+              azureSubscription: 'servcon'
               appType: 'webAppLinux'         # Use 'webApp' for Windows
               appName: 'learnazdevops'
               package: '$(Pipeline.Workspace)/warfile/*.war'
