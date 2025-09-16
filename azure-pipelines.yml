@@ -122,19 +122,10 @@ stages:
         echo "##vso[task.setvariable variable=TARGET_DIR]$TARGET_DIR"
       displayName: 'Find Maven target folder'
 
-    # Step 4: Publish artifact
+    # Step 4: Publish artifact (name = warfile)
     - publish: $(TARGET_DIR)
-      artifact: java-app
-      displayName: "Publish build artifact"
-    - task: CopyFiles@2
-      inputs:
-        Contents: '**/*.war'
-        TargetFolder: '$(build.artifactstagingdirectory)'
-    - task: PublishBuildArtifacts@1
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-        ArtifactName: 'warfile'
-        publishLocation: 'Container'
+      artifact: warfile
+      displayName: "Publish WAR artifact"
 
 # ---------------- Release Stage ----------------
 - stage: Release
@@ -143,27 +134,32 @@ stages:
   jobs:
   - deployment: DeployJob
     displayName: "Deploy to Dev Environment"
-    environment: webapp   # This will show up under Pipelines → Environments
+    environment: Dev   # Shows up under Pipelines → Environments
     strategy:
       runOnce:
         deploy:
           steps:
+          # Download artifact "warfile"
           - download: current
             artifact: warfile
 
+          # Debug: list contents of artifact folder
+          - script: |
+              echo "Listing contents of artifact folder:"
+              ls -R $(Pipeline.Workspace)/warfile
+            displayName: "Debug artifact contents"
+
+          # Deploy WAR to Tomcat
           - script: |
               echo "Deploying WAR file..."
-              WAR_FILE=$(find $(Pipeline.Workspace)/java-app -name "*.war" | head -n 1)
+              WAR_FILE=$(find $(Pipeline.Workspace)/warfile -name "*.war" | head -n 1)
               if [ -z "$WAR_FILE" ]; then
                 echo "ERROR: WAR file not found!"
                 exit 1
               fi
-              # Example: copy to Tomcat
               cp "$WAR_FILE" /opt/tomcat/webapps/
               echo "Deployed $WAR_FILE to Tomcat."
             displayName: "Deploy WAR to Tomcat"
-
-
 
 
 
