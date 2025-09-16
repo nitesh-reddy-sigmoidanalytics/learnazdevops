@@ -1,69 +1,158 @@
+# trigger:
+# - master
+
+# pool:
+#   name: agent-pool  # Your self-hosted Linux agent pool
+
+# steps:
+# # Step 1: Detect JDK 11 and set JAVA_HOME_11_X64 safely
+# - script: |
+#     JAVAC_PATH=$(which javac)
+#     if [ -z "$JAVAC_PATH" ]; then
+#       echo "ERROR: javac not found. Make sure JDK 11 is installed and in PATH."
+#       exit 1
+#     fi
+
+#     # Resolve full path safely
+#     JAVAC_REAL=$(readlink -f "$JAVAC_PATH")
+#     JDK_PATH=$(dirname $(dirname "$JAVAC_REAL"))
+
+#     # Set pipeline variable
+#     echo "##vso[task.setvariable variable=JAVA_HOME_11_X64]$JDK_PATH"
+#     echo "JAVA_HOME_11_X64 set to $JDK_PATH"
+
+#     # Verify
+#     "$JDK_PATH/bin/java" -version
+#     "$JDK_PATH/bin/javac" -version
+#   displayName: 'Set JAVA_HOME_11_X64 safely'
+
+# # Step 2: Maven build and test
+# - task: Maven@4
+#   inputs:
+#     mavenPOMFile: 'pom.xml'  # Adjust if your pom.xml is in a subfolder
+#     mavenOptions: '-Xmx3072m'
+#     javaHomeOption: 'JDKVersion'
+#     jdkVersionOption: '11'
+#     jdkArchitectureOption: 'x64'
+#     publishJUnitResults: true
+#     testResultsFiles: '**/surefire-reports/TEST-*.xml'
+#     goals: 'package'
+
+# # Step 3: Auto-detect Maven target folder
+# - script: |
+#     TARGET_DIR=$(find $(System.DefaultWorkingDirectory) -type d -name target | head -n 1)
+#     if [ -z "$TARGET_DIR" ]; then
+#       echo "ERROR: Maven target folder not found"
+#       exit 1
+#     fi
+#     echo "Found target folder: $TARGET_DIR"
+#     echo "##vso[task.setvariable variable=TARGET_DIR]$TARGET_DIR"
+#   displayName: 'Find Maven target folder'
+
+# # Step 4: Publish build artifacts
+# - task: PublishBuildArtifacts@1
+#   inputs:
+#     pathToPublish: '$(TARGET_DIR)'
+#     artifactName: 'java-app'
+#     publishLocation: 'Container'
+# - task: CopyFiles@2
+#   inputs:
+#     Contents: '**/*.war'
+#     TargetFolder: '$(build.artifactstagingdirectory)'
+# - task: PublishBuildArtifacts@1
+#   inputs:
+#     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+#     ArtifactName: 'warfile'
+#     publishLocation: 'Container'
+
+
+
 trigger:
 - master
 
 pool:
   name: agent-pool  # Your self-hosted Linux agent pool
 
-steps:
-# Step 1: Detect JDK 11 and set JAVA_HOME_11_X64 safely
-- script: |
-    JAVAC_PATH=$(which javac)
-    if [ -z "$JAVAC_PATH" ]; then
-      echo "ERROR: javac not found. Make sure JDK 11 is installed and in PATH."
-      exit 1
-    fi
+stages:
+# ---------------- Build Stage ----------------
+- stage: Build
+  displayName: "Build Stage"
+  jobs:
+  - job: BuildJob
+    displayName: "Build with Maven"
+    steps:
+    # Step 1: Detect JDK 11
+    - script: |
+        JAVAC_PATH=$(which javac)
+        if [ -z "$JAVAC_PATH" ]; then
+          echo "ERROR: javac not found. Make sure JDK 11 is installed and in PATH."
+          exit 1
+        fi
 
-    # Resolve full path safely
-    JAVAC_REAL=$(readlink -f "$JAVAC_PATH")
-    JDK_PATH=$(dirname $(dirname "$JAVAC_REAL"))
+        JAVAC_REAL=$(readlink -f "$JAVAC_PATH")
+        JDK_PATH=$(dirname $(dirname "$JAVAC_REAL"))
 
-    # Set pipeline variable
-    echo "##vso[task.setvariable variable=JAVA_HOME_11_X64]$JDK_PATH"
-    echo "JAVA_HOME_11_X64 set to $JDK_PATH"
+        echo "##vso[task.setvariable variable=JAVA_HOME_11_X64]$JDK_PATH"
+        echo "JAVA_HOME_11_X64 set to $JDK_PATH"
 
-    # Verify
-    "$JDK_PATH/bin/java" -version
-    "$JDK_PATH/bin/javac" -version
-  displayName: 'Set JAVA_HOME_11_X64 safely'
+        "$JDK_PATH/bin/java" -version
+        "$JDK_PATH/bin/javac" -version
+      displayName: 'Set JAVA_HOME_11_X64 safely'
 
-# Step 2: Maven build and test
-- task: Maven@4
-  inputs:
-    mavenPOMFile: 'pom.xml'  # Adjust if your pom.xml is in a subfolder
-    mavenOptions: '-Xmx3072m'
-    javaHomeOption: 'JDKVersion'
-    jdkVersionOption: '11'
-    jdkArchitectureOption: 'x64'
-    publishJUnitResults: true
-    testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    goals: 'package'
+    # Step 2: Maven build
+    - task: Maven@4
+      inputs:
+        mavenPOMFile: 'pom.xml'
+        mavenOptions: '-Xmx3072m'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '11'
+        jdkArchitectureOption: 'x64'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        goals: 'package'
 
-# Step 3: Auto-detect Maven target folder
-- script: |
-    TARGET_DIR=$(find $(System.DefaultWorkingDirectory) -type d -name target | head -n 1)
-    if [ -z "$TARGET_DIR" ]; then
-      echo "ERROR: Maven target folder not found"
-      exit 1
-    fi
-    echo "Found target folder: $TARGET_DIR"
-    echo "##vso[task.setvariable variable=TARGET_DIR]$TARGET_DIR"
-  displayName: 'Find Maven target folder'
+    # Step 3: Detect target folder
+    - script: |
+        TARGET_DIR=$(find $(System.DefaultWorkingDirectory) -type d -name target | head -n 1)
+        if [ -z "$TARGET_DIR" ]; then
+          echo "ERROR: Maven target folder not found"
+          exit 1
+        fi
+        echo "Found target folder: $TARGET_DIR"
+        echo "##vso[task.setvariable variable=TARGET_DIR]$TARGET_DIR"
+      displayName: 'Find Maven target folder'
 
-# Step 4: Publish build artifacts
-- task: PublishBuildArtifacts@1
-  inputs:
-    pathToPublish: '$(TARGET_DIR)'
-    artifactName: 'java-app'
-    publishLocation: 'Container'
-- task: CopyFiles@2
-  inputs:
-    Contents: '**/*.war'
-    TargetFolder: '$(build.artifactstagingdirectory)'
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'warfile'
-    publishLocation: 'Container'
+    # Step 4: Publish artifact
+    - publish: $(TARGET_DIR)
+      artifact: java-app
+      displayName: "Publish build artifact"
+
+# ---------------- Release Stage ----------------
+- stage: Release
+  displayName: "Release Stage"
+  dependsOn: Build
+  jobs:
+  - deployment: DeployJob
+    displayName: "Deploy to Dev Environment"
+    environment: Dev   # This will show up under Pipelines → Environments
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: java-app
+
+          - script: |
+              echo "Deploying WAR file..."
+              WAR_FILE=$(find $(Pipeline.Workspace)/java-app -name "*.war" | head -n 1)
+              if [ -z "$WAR_FILE" ]; then
+                echo "ERROR: WAR file not found!"
+                exit 1
+              fi
+              # Example: copy to Tomcat
+              cp "$WAR_FILE" /opt/tomcat/webapps/
+              echo "Deployed $WAR_FILE to Tomcat."
+            displayName: "Deploy WAR to Tomcat"
 
 
 
