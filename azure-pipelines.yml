@@ -66,7 +66,6 @@
 #     publishLocation: 'Container'
 
 
-
 trigger:
 - master
 
@@ -126,12 +125,6 @@ stages:
     - publish: $(TARGET_DIR)
       artifact: warfile
       displayName: "Publish WAR artifact"
-    
-    - task: PublishBuildArtifacts@1
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-        ArtifactName: 'warfile'
-        publishLocation: 'Container'
 
 # ---------------- Release Stage ----------------
 - stage: Release
@@ -166,8 +159,3 @@ stages:
               cp "$WAR_FILE" /opt/tomcat/webapps/
               echo "Deployed $WAR_FILE to Tomcat."
             displayName: "Deploy WAR to Tomcat"
-
-
-
-
-
