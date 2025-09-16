@@ -5,24 +5,17 @@ pool:
   name: agent-pool
 
 steps:
-# Step 1: Install JDK 11
-- task: JavaToolInstaller@0
-  inputs:
-    versionSpec: '11'
-    jdkArchitecture: 'x64'
-
-# Step 2: Run Maven build
+# Maven build using pre-installed JDK
 - task: Maven@4
   inputs:
     mavenPOMFile: 'pom.xml'
     mavenOptions: '-Xmx3072m'
-    javaHomeOption: 'JDKVersion'
-    jdkVersionOption: '11'
-    jdkArchitectureOption: 'x64'  # Explicitly set architecture
+    javaHomeOption: 'JDKVersion'       # Use a specific JDK
+    jdkVersionOption: '11'             # Must match installed JDK
+    jdkArchitectureOption: 'x64'       # Required, must match JAVA_HOME_11_X64
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
     goals: 'package'
-
 
 
 
