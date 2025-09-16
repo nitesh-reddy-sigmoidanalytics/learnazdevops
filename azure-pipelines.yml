@@ -17,8 +17,9 @@ steps:
     mavenPomFile: 'pom.xml'
     mavenOptions: '-Xmx3072m'
     javaHomeOption: 'JDKVersion'
-    jdkVersionOption: '1.11'
-    jdkArchitectureOption: 'x64'
+    jdkVersionOption: '11'      # Must match JavaToolInstaller versionSpec
+    jdkArchitectureOption: 'x64' # Required, fixes the error
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
     goals: 'package'
+
