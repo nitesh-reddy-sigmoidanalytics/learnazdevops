@@ -2,20 +2,13 @@ trigger:
 - master
 
 pool:
-  name: agent-pool
+  name: agent-pool  # Your self-hosted Linux agent pool
 
 steps:
-# Maven build using pre-installed JDK
-- task: Maven@4
-  inputs:
-    mavenPOMFile: 'pom.xml'
-    mavenOptions: '-Xmx3072m'
-    javaHomeOption: 'JDKVersion'       # Use a specific JDK
-    jdkVersionOption: '11'             # Must match installed JDK
-    jdkArchitectureOption: 'x64'       # Required, must match JAVA_HOME_11_X64
-    publishJUnitResults: true
-    testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    goals: 'package'
+# Step 1: Detect JDK 11 installation and set JAVA_HOME_11_X64
+- script: |
+    # Find JDK 11 path
+    JDK_PATH=$(dirname $(dirname $(readlink -f $(which javac)_
 
 
 
