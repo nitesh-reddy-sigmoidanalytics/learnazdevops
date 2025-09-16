@@ -79,11 +79,20 @@ stages:
   - job: BuildJob
     displayName: "Build with Maven"
     steps:
-    # Step 1: Ensure JDK 11 is available
-    - task: UseJavaVersion@1
-      inputs:
-        versionSpec: '11'
-        jdkArchitectureOption: 'x64'
+    # Step 1: Detect JDK 11 manually
+    - script: |
+        JAVAC_PATH=$(which javac)
+        if [ -z "$JAVAC_PATH" ]; then
+          echo "ERROR: javac not found. Make sure JDK 11 is installed and in PATH."
+          exit 1
+        fi
+        JAVAC_REAL=$(readlink -f "$JAVAC_PATH")
+        JDK_PATH=$(dirname $(dirname "$JAVAC_REAL"))
+        echo "##vso[task.setvariable variable=JAVA_HOME_11_X64]$JDK_PATH"
+        echo "JAVA_HOME_11_X64 set to $JDK_PATH"
+        "$JDK_PATH/bin/java" -version
+        "$JDK_PATH/bin/javac" -version
+      displayName: 'Set JAVA_HOME manually'
 
     # Step 2: Maven build
     - task: Maven@4
@@ -104,18 +113,26 @@ stages:
         TargetFolder: '$(Build.ArtifactStagingDirectory)/war'
         flattenFolders: true
 
-    # Step 4: Rename WAR to ROOT.war
+    # Step 4: Validate WAR structure
     - script: |
         WAR_FILE=$(find "$(Build.ArtifactStagingDirectory)/war" -name "*.war" | head -n 1)
         if [ -z "$WAR_FILE" ]; then
           echo "ERROR: No WAR file found"
           exit 1
         fi
+        unzip -l "$WAR_FILE" | grep "WEB-INF/" > /dev/null || { echo "ERROR: WEB-INF missing"; exit 1; }
+        unzip -l "$WAR_FILE" | grep ".class" > /dev/null || { echo "ERROR: No classes found"; exit 1; }
+        echo "WAR validation passed"
+      displayName: "Validate WAR structure"
+
+    # Step 5: Rename WAR to ROOT.war
+    - script: |
+        WAR_FILE=$(find "$(Build.ArtifactStagingDirectory)/war" -name "*.war" | head -n 1)
         mv "$WAR_FILE" "$(Build.ArtifactStagingDirectory)/war/ROOT.war"
         echo "Renamed WAR to ROOT.war"
       displayName: "Rename WAR to ROOT.war"
 
-    # Step 5: Publish artifact
+    # Step 6: Publish artifact
     - task: PublishBuildArtifacts@1
       inputs:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)/war'
@@ -153,6 +170,7 @@ stages:
               package: '$(Pipeline.Workspace)/warfile/ROOT.war'
               runtimeStack: 'TOMCAT|11-java11'
             displayName: "Deploy ROOT.war to Azure Web App"
+
 
 
 
