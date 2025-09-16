@@ -155,13 +155,18 @@ stages:
           - download: current
             artifact: warfile
 
-          # Step 2: Debug artifact contents
-          - script: |
-              echo "Contents of artifact folder:"
-              ls -R $(Pipeline.Workspace)/warfile
-            displayName: "Debug artifact contents"
+          # Step 2: Clean wwwroot on App Service
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: 'servcon'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Cleaning /home/site/wwwroot..."
+                az webapp ssh --name lazdevops --resource-group az-devops-rg --command "rm -rf /home/site/wwwroot/*"
+            displayName: "Clean App Service wwwroot"
 
-          # Step 3: Deploy ROOT.war to Azure Web App
+          # Step 3: Deploy ROOT.war
           - task: AzureWebApp@1
             inputs:
               azureSubscription: 'servcon'
@@ -171,11 +176,13 @@ stages:
               runtimeStack: 'TOMCAT|11-java11'
             displayName: "Deploy ROOT.war to Azure Web App"
 
-
-
-
-
-
-
-             
-
+          # Step 4: Optional - tail logs
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: 'servcon'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Streaming Tomcat logs..."
+                az webapp log tail --name lazdevops --resource-group az-devops-rg
+            displayName: "Stream App Logs"
