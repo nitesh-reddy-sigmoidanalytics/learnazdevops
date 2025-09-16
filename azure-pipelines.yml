@@ -29,7 +29,7 @@ steps:
 # Step 2: Maven build and test
 - task: Maven@4
   inputs:
-    mavenPOMFile: 'pom.xml'
+    mavenPOMFile: 'pom.xml'  # Adjust if your pom.xml is in a subfolder
     mavenOptions: '-Xmx3072m'
     javaHomeOption: 'JDKVersion'
     jdkVersionOption: '11'
@@ -38,12 +38,19 @@ steps:
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
     goals: 'package'
 
-# Step 3: Publish build artifacts
+# Step 3: Debug: Check target folder exists
+- script: |
+    echo "Listing files in $(System.DefaultWorkingDirectory):"
+    ls -R
+  displayName: 'Debug: Check target folder'
+
+# Step 4: Publish build artifacts safely
 - task: PublishBuildArtifacts@1
   inputs:
-    pathToPublish: 'target'
+    pathToPublish: '$(System.DefaultWorkingDirectory)/target'  # Adjust if pom.xml is in subfolder
     artifactName: 'java-app'
     publishLocation: 'Container'
+
 
 
 
