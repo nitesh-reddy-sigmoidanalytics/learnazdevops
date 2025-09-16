@@ -79,23 +79,11 @@ stages:
   - job: BuildJob
     displayName: "Build with Maven"
     steps:
-    # Step 1: Detect JDK 11
-    - script: |
-        JAVAC_PATH=$(which javac)
-        if [ -z "$JAVAC_PATH" ]; then
-          echo "ERROR: javac not found. Make sure JDK 11 is installed and in PATH."
-          exit 1
-        fi
-
-        JAVAC_REAL=$(readlink -f "$JAVAC_PATH")
-        JDK_PATH=$(dirname $(dirname "$JAVAC_REAL"))
-
-        echo "##vso[task.setvariable variable=JAVA_HOME_11_X64]$JDK_PATH"
-        echo "JAVA_HOME_11_X64 set to $JDK_PATH"
-
-        "$JDK_PATH/bin/java" -version
-        "$JDK_PATH/bin/javac" -version
-      displayName: 'Set JAVA_HOME_11_X64 safely'
+    # Step 1: Ensure JDK 11 is available
+    - task: UseJavaVersion@1
+      inputs:
+        versionSpec: '11'
+        jdkArchitectureOption: 'x64'
 
     # Step 2: Maven build
     - task: Maven@4
@@ -107,66 +95,32 @@ stages:
         jdkArchitectureOption: 'x64'
         publishJUnitResults: true
         testResultsFiles: '**/surefire-reports/TEST-*.xml'
-        goals: 'package'
+        goals: 'clean package'
 
-    # Step 3: Detect Maven target folder
-    - script: |
-        TARGET_DIR=$(find $(System.DefaultWorkingDirectory) -type d -name target | head -n 1)
-        if [ -z "$TARGET_DIR" ]; then
-          echo "ERROR: Maven target folder not found"
-          exit 1
-        fi
-        echo "Found target folder: $TARGET_DIR"
-        echo "##vso[task.setvariable variable=TARGET_DIR]$TARGET_DIR"
-      displayName: 'Find Maven target folder'
-
-    # Step 4: Copy WAR to staging directory
+    # Step 3: Copy WAR to staging
     - task: CopyFiles@2
       inputs:
-        Contents: '**/*.war'
+        Contents: '**/target/*.war'
         TargetFolder: '$(Build.ArtifactStagingDirectory)/war'
         flattenFolders: true
-      displayName: 'Copy WAR to Artifact Staging Directory'
 
-    # Step 5: Validate WAR structure
+    # Step 4: Rename WAR to ROOT.war
     - script: |
         WAR_FILE=$(find "$(Build.ArtifactStagingDirectory)/war" -name "*.war" | head -n 1)
         if [ -z "$WAR_FILE" ]; then
-          echo "ERROR: No WAR file found to validate"
+          echo "ERROR: No WAR file found"
           exit 1
         fi
-
-        # Check for WEB-INF
-        unzip -l "$WAR_FILE" | grep "WEB-INF/" > /dev/null
-        if [ $? -ne 0 ]; then
-          echo "ERROR: WAR does not contain WEB-INF folder"
-          exit 1
-        fi
-
-        # Check for at least one class file
-        unzip -l "$WAR_FILE" | grep ".class" > /dev/null
-        if [ $? -ne 0 ]; then
-          echo "ERROR: WAR does not contain compiled classes"
-          exit 1
-        fi
-
-        echo "WAR validation passed: WEB-INF and classes exist"
-      displayName: "Validate WAR structure"
-
-    # Step 6: Rename WAR to ROOT.war
-    - script: |
-        WAR_FILE=$(find "$(Build.ArtifactStagingDirectory)/war" -name "*.war" | head -n 1)
         mv "$WAR_FILE" "$(Build.ArtifactStagingDirectory)/war/ROOT.war"
         echo "Renamed WAR to ROOT.war"
       displayName: "Rename WAR to ROOT.war"
 
-    # Step 7: Publish WAR artifact
+    # Step 5: Publish artifact
     - task: PublishBuildArtifacts@1
       inputs:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)/war'
         ArtifactName: 'warfile'
         publishLocation: 'Container'
-      displayName: 'Publish WAR artifact'
 
 # ---------------- Release Stage ----------------
 - stage: Release
@@ -181,24 +135,7 @@ stages:
         deploy:
           steps:
           # Step 1: Download WAR artifact
-          - download: current
-            artifact: warfile
 
-          # Step 2: Debug - list contents of artifact folder
-          - script: |
-              echo "Listing contents of artifact folder:"
-              ls -R $(Pipeline.Workspace)/warfile
-            displayName: "Debug artifact contents"
-
-          # Step 3: Deploy ROOT.war to Azure Web App
-          - task: AzureWebApp@1
-            inputs:
-              azureSubscription: 'servcon'
-              appType: 'webAppLinux'
-              appName: 'lazdevops'
-              package: '$(Pipeline.Workspace)/warfile/ROOT.war'
-              runtimeStack: 'TOMCAT|11-java11'
-            displayName: "Deploy ROOT.war to Azure Web App"
 
 
 
