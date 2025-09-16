@@ -11,15 +11,14 @@ steps:
     versionSpec: '11'
     jdkArchitecture: 'x64'
 
-# Step 2: Run Maven build
+# Step 2: Run Maven build using the installed JDK
 - task: Maven@3
   inputs:
     mavenPomFile: 'pom.xml'
     mavenOptions: '-Xmx3072m'
-    javaHomeOption: 'JDKVersion'
-    jdkVersionOption: '11'      # Must match JavaToolInstaller versionSpec
-    jdkArchitectureOption: 'x64' # Required, fixes the error
+    javaHomeOption: 'JDKVersion'   # Picks up JDK installed by previous step
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
     goals: 'package'
+
 
