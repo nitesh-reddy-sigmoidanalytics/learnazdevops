@@ -125,9 +125,21 @@ stages:
       inputs:
         Contents: '**/*.war'
         TargetFolder: '$(Build.ArtifactStagingDirectory)/war'
+        flattenFolders: true
       displayName: 'Copy WAR to Artifact Staging Directory'
 
-    # Step 5: Publish WAR artifact
+    # Step 5: Rename WAR to ROOT.war for root context deployment
+    - script: |
+        WAR_FILE=$(find "$(Build.ArtifactStagingDirectory)/war" -name "*.war" | head -n 1)
+        if [ -z "$WAR_FILE" ]; then
+          echo "ERROR: WAR file not found to rename"
+          exit 1
+        fi
+        mv "$WAR_FILE" "$(Build.ArtifactStagingDirectory)/war/ROOT.war"
+        echo "Renamed WAR to ROOT.war"
+      displayName: "Rename WAR to ROOT.war"
+
+    # Step 6: Publish WAR artifact
     - task: PublishBuildArtifacts@1
       inputs:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)/war'
