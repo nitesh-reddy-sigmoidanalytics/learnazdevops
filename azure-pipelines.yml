@@ -134,13 +134,13 @@ stages:
   jobs:
   - deployment: DeployJob
     displayName: "Deploy to Dev Environment"
-    environment: Dev   # This will show up under Pipelines → Environments
+    environment: webapp   # This will show up under Pipelines → Environments
     strategy:
       runOnce:
         deploy:
           steps:
           - download: current
-            artifact: java-app
+            artifact: warfile
 
           - script: |
               echo "Deploying WAR file..."
