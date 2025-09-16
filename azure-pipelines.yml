@@ -195,7 +195,7 @@ stages:
             inputs:
               azureSubscription: 'servcon'
               appType: 'webAppLinux'
-              appName: 'learnazdevops'
+              appName: 'lazdevops'
               package: '$(Pipeline.Workspace)/warfile/ROOT.war'
               runtimeStack: 'TOMCAT|11-java11'
             displayName: "Deploy ROOT.war to Azure Web App"
