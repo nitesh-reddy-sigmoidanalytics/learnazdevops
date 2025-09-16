@@ -125,7 +125,6 @@ stages:
     - publish: $(TARGET_DIR)
       artifact: warfile
       displayName: "Publish WAR artifact"
-
 # ---------------- Release Stage ----------------
 - stage: Release
   displayName: "Release Stage"
@@ -133,29 +132,38 @@ stages:
   jobs:
   - deployment: DeployJob
     displayName: "Deploy to Dev Environment"
-    environment: Dev   # Shows up under Pipelines → Environments
+    environment: Dev
     strategy:
       runOnce:
         deploy:
           steps:
-          # Download artifact "warfile"
+          # Step 1: Download artifact "warfile"
           - download: current
             artifact: warfile
 
-          # Debug: list contents of artifact folder
+          # Step 2: Debug - list contents of artifact folder
           - script: |
               echo "Listing contents of artifact folder:"
               ls -R $(Pipeline.Workspace)/warfile
             displayName: "Debug artifact contents"
 
-          # Deploy WAR to Tomcat
+          # Step 3: Clean old WAR and deploy new WAR
           - script: |
-              echo "Deploying WAR file..."
-              WAR_FILE=$(find $(Pipeline.Workspace)/warfile -name "*.war" | head -n 1)
-              if [ -z "$WAR_FILE" ]; then
-                echo "ERROR: WAR file not found!"
-                exit 1
-              fi
-              cp "$WAR_FILE" /opt/tomcat/webapps/
-              echo "Deployed $WAR_FILE to Tomcat."
-            displayName: "Deploy WAR to Tomcat"
+              TOMCAT_HOME="/opt/tomcat"
+              APP_NAME="webapp"   # Change to your WAR name if different
+
+              echo "Stopping Tomcat..."
+              sudo systemctl stop tomcat
+
+              echo "Removing old WAR and exploded folder..."
+              rm -rf "$TOMCAT_HOME/webapps/$APP_NAME"
+              rm -f "$TOMCAT_HOME/webapps/$APP_NAME.war"
+
+              echo "Copying new WAR..."
+              cp "$(Pipeline.Workspace)/warfile/$APP_NAME.war" "$TOMCAT_HOME/webapps/"
+
+              echo "Starting Tomcat..."
+              sudo systemctl start tomcat
+
+              echo "Deployment of $APP_NAME.war completed!"
+            displayName: "Clean old WAR and deploy new WAR"
