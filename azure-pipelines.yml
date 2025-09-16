@@ -135,6 +135,25 @@ stages:
         deploy:
           steps:
           # Step 1: Download WAR artifact
+          - download: current
+            artifact: warfile
+
+          # Step 2: Debug artifact contents
+          - script: |
+              echo "Contents of artifact folder:"
+              ls -R $(Pipeline.Workspace)/warfile
+            displayName: "Debug artifact contents"
+
+          # Step 3: Deploy ROOT.war to Azure Web App
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: 'servcon'
+              appType: 'webAppLinux'
+              appName: 'lazdevops'
+              package: '$(Pipeline.Workspace)/warfile/ROOT.war'
+              runtimeStack: 'TOMCAT|11-java11'
+            displayName: "Deploy ROOT.war to Azure Web App"
+
 
 
 
