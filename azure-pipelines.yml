@@ -5,10 +5,46 @@ pool:
   name: agent-pool  # Your self-hosted Linux agent pool
 
 steps:
-# Step 1: Detect JDK 11 installation and set JAVA_HOME_11_X64
+# Step 1: Detect JDK 11 and set JAVA_HOME_11_X64 safely
 - script: |
-    # Find JDK 11 path
-    JDK_PATH=$(dirname $(dirname $(readlink -f $(which javac)_
+    JAVAC_PATH=$(which javac)
+    if [ -z "$JAVAC_PATH" ]; then
+      echo "ERROR: javac not found. Make sure JDK 11 is installed and in PATH."
+      exit 1
+    fi
+
+    # Resolve full path safely
+    JAVAC_REAL=$(readlink -f "$JAVAC_PATH")
+    JDK_PATH=$(dirname $(dirname "$JAVAC_REAL"))
+
+    # Set pipeline variable
+    echo "##vso[task.setvariable variable=JAVA_HOME_11_X64]$JDK_PATH"
+    echo "JAVA_HOME_11_X64 set to $JDK_PATH"
+
+    # Verify
+    "$JDK_PATH/bin/java" -version
+    "$JDK_PATH/bin/javac" -version
+  displayName: 'Set JAVA_HOME_11_X64 safely'
+
+# Step 2: Maven build and test
+- task: Maven@4
+  inputs:
+    mavenPOMFile: 'pom.xml'
+    mavenOptions: '-Xmx3072m'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '11'
+    jdkArchitectureOption: 'x64'
+    publishJUnitResults: true
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    goals: 'package'
+
+# Step 3: Publish build artifacts
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: 'target'
+    artifactName: 'java-app'
+    publishLocation: 'Container'
+
 
 
 
