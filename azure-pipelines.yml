@@ -65,4 +65,29 @@ steps:
     ArtifactName: 'warfile'
     publishLocation: 'Container'
 
+  - stage: Release
+  displayName: "Release Stage"
+  dependsOn: Build
+  jobs:
+  - deployment: DeployJob
+    displayName: "Deploy to Azure Web App"
+    environment: Dev
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          # Step 1: Download artifact from Build stage
+          - download: current
+            artifact: warfile
+
+          # Step 2: Deploy to Azure Web App
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: 'Azure subscription 1'
+              appType: 'webAppLinux'   # Use 'webApp' for Windows
+              appName: 'learnazuredevops'
+              package: '$(Pipeline.Workspace)/warfile/*.war'
+              runtimeStack: 'TOMCAT|11-java11'  # Adjust if needed
+
+
 
