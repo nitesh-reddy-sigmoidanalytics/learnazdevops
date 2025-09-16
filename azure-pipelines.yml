@@ -2,32 +2,50 @@ trigger:
 - master
 
 pool:
-  name: agent-pool   # your self-hosted agent pool name
+  name: agent-pool
 
 steps:
-# Step 1: Check Java 11 on the agent
+# Step 1: Check Java 11
 - script: |
     echo "JAVA_HOME_11_X64=$JAVA_HOME_11_X64"
     java -version
   displayName: "Check Java"
 
-# Step 2: Build with Maven (using Java path)
+# Step 2: Build mavenhelloworldmaster
 - task: Maven@4
   inputs:
-    mavenPomFile: 'pom.xml'
+    mavenPomFile: 'mavenhelloworldmaster/pom.xml'
     mavenOptions: '-Xmx3072m'
-    javaHomeOption: 'Path'                             # use the path directly
-    jdkUserInputPath: '/usr/lib/jvm/java-11-openjdk-amd64'  # correct property
+    javaHomeOption: 'Path'
+    jdkUserInputPath: '/usr/lib/jvm/java-11-openjdk-amd64'
     publishJUnitResults: true
-    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    testResultsFiles: 'mavenhelloworldmaster/**/surefire-reports/TEST-*.xml'
     goals: 'clean package'
 
-# Step 3 (Optional): Archive build artifacts
+# Step 3: Build webapp
+- task: Maven@4
+  inputs:
+    mavenPomFile: 'webapp/pom.xml'
+    mavenOptions: '-Xmx3072m'
+    javaHomeOption: 'Path'
+    jdkUserInputPath: '/usr/lib/jvm/java-11-openjdk-amd64'
+    publishJUnitResults: true
+    testResultsFiles: 'webapp/**/surefire-reports/TEST-*.xml'
+    goals: 'clean package'
+
+# Step 4: Publish artifacts
 - task: PublishBuildArtifacts@1
   inputs:
-    PathtoPublish: 'target'   # Maven output folder
-    ArtifactName: 'drop'
+    PathtoPublish: '$(Build.SourcesDirectory)/mavenhelloworldmaster/target'
+    ArtifactName: 'mavenhelloworldmaster-drop'
     publishLocation: 'Container'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.SourcesDirectory)/webapp/target'
+    ArtifactName: 'webapp-drop'
+    publishLocation: 'Container'
+
 
 
 
