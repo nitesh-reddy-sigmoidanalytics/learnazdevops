@@ -29,7 +29,7 @@ steps:
 # Step 2: Maven build and test
 - task: Maven@4
   inputs:
-    mavenPOMFile: 'pom.xml'  # Adjust if your pom.xml is in a subfolder
+    mavenPOMFile: 'pom.xml'  # Path to your pom.xml
     mavenOptions: '-Xmx3072m'
     javaHomeOption: 'JDKVersion'
     jdkVersionOption: '11'
@@ -47,9 +47,10 @@ steps:
 # Step 4: Publish build artifacts safely
 - task: PublishBuildArtifacts@1
   inputs:
-    pathToPublish: '$(System.DefaultWorkingDirectory)/target'  # Adjust if pom.xml is in subfolder
+    pathToPublish: '$(System.DefaultWorkingDirectory)/target'  # Match Maven output
     artifactName: 'java-app'
     publishLocation: 'Container'
+
 
 
 
