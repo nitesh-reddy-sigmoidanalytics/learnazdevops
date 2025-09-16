@@ -1,5 +1,3 @@
-# Azure DevOps Maven Pipeline for Self-Hosted Agent (Java 11 via Path)
-
 trigger:
 - master
 
@@ -18,8 +16,8 @@ steps:
   inputs:
     mavenPomFile: 'pom.xml'
     mavenOptions: '-Xmx3072m'
-    javaHomeOption: 'Path'                     # use the path directly
-    jdkPath: '/usr/lib/jvm/java-11-openjdk-amd64'  # full path to Java 11
+    javaHomeOption: 'Path'                             # use the path directly
+    jdkUserInputPath: '/usr/lib/jvm/java-11-openjdk-amd64'  # correct property
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
     goals: 'clean package'
@@ -30,5 +28,6 @@ steps:
     PathtoPublish: 'target'   # Maven output folder
     ArtifactName: 'drop'
     publishLocation: 'Container'
+
 
 
