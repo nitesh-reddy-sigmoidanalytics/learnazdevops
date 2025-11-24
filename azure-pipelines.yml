@@ -5,27 +5,32 @@ pool:
   name: 'self hosted pool'
 
 steps:
+# === Install / Download Java 11 Automatically ===
 - task: JavaToolInstaller@0
   inputs:
-    versionSpec: '11'
+    versionSpec: '11'                 # JDK version
     jdkArchitectureOption: 'x64'
-    jdkSourceOption: 'PreInstalled'
+    jdkSourceOption: 'Hosted'         # <--- IMPORTANT: downloads JDK from Microsoft
+    cleanDestinationDirectory: true
 
+# === Maven Build ===
 - task: Maven@3
   inputs:
     mavenPomFile: 'pom.xml'
     mavenOptions: '-Xmx3072m'
-    javaHomeOption: 'Path'
-    jdkDirectory: '$(JAVA_HOME)'
+    javaHomeOption: 'Path'            # Use PATH instead of JDKVersion
+    jdkDirectory: '$(JAVA_HOME)'      # JAVA_HOME set by JavaToolInstaller
     goals: 'clean package'
     publishJUnitResults: true
 
+# === Copy WAR File ===
 - task: CopyFiles@2
   inputs:
     SourceFolder: '$(System.DefaultWorkingDirectory)'
     Contents: '**/*.war'
     TargetFolder: '$(Build.ArtifactStagingDirectory)'
 
+# === Publish Artifact ===
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
